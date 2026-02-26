@@ -6,7 +6,7 @@
   <Version>1.0.1</Version>
   <ProviderName>QKSPARK</ProviderName>
   <DefaultLocale>zh-CN</DefaultLocale>
-  <DisplayName DefaultValue="QKSPARK 智能编辑助手"/>
+  <DisplayName DefaultValue="智编编辑助手"/>
   <Description DefaultValue="科技期刊论文智能编辑辅助工具"/>
   <SupportUrl DefaultValue="https://louisone1.github.io/qkspark-addin/"/>
   <Hosts>
