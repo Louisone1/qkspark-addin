@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QKSPARK</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; padding: 16px; background: #f5f5f5; color: #333; }
+    h1 { font-size: 18px; color: #0078d4; margin-bottom: 12px; }
+    .status { padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; }
+    .ok { background: #dff6dd; color: #107c10; }
+    .err { background: #fde7e9; color: #d13438; }
+    .btn { display: block; width: 100%; padding: 10px; margin: 8px 0; border: none; border-radius: 4px; background: #0078d4; color: #fff; font-size: 14px; cursor: pointer; }
+    .btn:hover { background: #106ebe; }
+    #output { margin-top: 12px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; min-height: 60px; font-size: 13px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>🔥 QKSPARK 智能编辑助手</h1>
+  <div id="status" class="status">初始化中...</div>
+  <button class="btn" id="btnCheck" disabled>术语一致性检查</button>
+  <button class="btn" id="btnPolish" disabled>学术润色</button>
+  <div id="output"></div>
+
+  <script>
+    var statusEl = document.getElementById('status');
+    var outputEl = document.getElementById('output');
+    var btnCheck = document.getElementById('btnCheck');
+    var btnPolish = document.getElementById('btnPolish');
+
+    Office.onReady(function(info) {
+      statusEl.textContent = '✅ 已连接 Word (' + info.host + ')';
+      statusEl.className = 'status ok';
+      btnCheck.disabled = false;
+      btnPolish.disabled = false;
+      document.title = 'QKSPARK-READY';
+    });
+
+    btnCheck.addEventListener('click', function() {
+      Word.run(function(context) {
+        var body = context.document.body;
+        body.load('text');
+        return context.sync().then(function() {
+          var text = body.text;
+          var len = text.length;
+          outputEl.textContent = '文档字数: ' + len + '\n前100字: ' + text.substring(0, 100);
+        });
+      }).catch(function(err) {
+        outputEl.textContent = '错误: ' + err.message;
+      });
+    });
+
+    btnPolish.addEventListener('click', function() {
+      outputEl.textContent = '学术润色功能开发中...';
+    });
+
+    window.onerror = function(msg, url, line) {
+      statusEl.textContent = '❌ ' + msg;
+      statusEl.className = 'status err';
+    };
+  </script>
+</body>
+</html>
