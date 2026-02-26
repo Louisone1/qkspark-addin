@@ -6,60 +6,460 @@
   <title>智编编辑助手</title>
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
   <style>
+    :root {
+      --primary: #0078d4;
+      --primary-hover: #106ebe;
+      --error: #d13438;
+      --error-bg: #fde7e9;
+      --warning: #ca5010;
+      --warning-bg: #fff4ce;
+      --info: #0078d4;
+      --info-bg: #deecf9;
+      --success: #107c10;
+      --success-bg: #dff6dd;
+      --bg: #f5f5f5;
+      --card: #fff;
+      --border: #edebe9;
+      --text: #323130;
+      --muted: #605e5c;
+      --radius: 6px;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', sans-serif; padding: 16px; background: #f5f5f5; color: #333; }
-    h1 { font-size: 18px; color: #0078d4; margin-bottom: 12px; }
-    .status { padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; }
-    .ok { background: #dff6dd; color: #107c10; }
-    .err { background: #fde7e9; color: #d13438; }
-    .btn { display: block; width: 100%; padding: 10px; margin: 8px 0; border: none; border-radius: 4px; background: #0078d4; color: #fff; font-size: 14px; cursor: pointer; }
-    .btn:hover { background: #106ebe; }
-    #output { margin-top: 12px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px; min-height: 60px; font-size: 13px; white-space: pre-wrap; }
+    body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; }
+    #app { padding: 12px; max-width: 420px; }
+
+    /* Header */
+    .header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .header h1 { font-size: 16px; color: var(--primary); }
+    .header .ver { font-size: 11px; color: var(--muted); }
+
+    /* Status bar */
+    .status-bar { padding: 6px 10px; border-radius: var(--radius); margin-bottom: 10px; font-size: 12px; text-align: center; display: none; }
+    .status-bar.show { display: block; }
+    .status-bar.ok { background: var(--success-bg); color: var(--success); }
+    .status-bar.err { background: var(--error-bg); color: var(--error); }
+    .status-bar.loading { background: var(--info-bg); color: var(--info); }
+
+    /* Card */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; }
+    .card h2 { font-size: 14px; margin-bottom: 6px; }
+    .card .hint { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+
+    /* Buttons */
+    .btn { display: block; width: 100%; padding: 9px; border: none; border-radius: var(--radius); font-size: 13px; cursor: pointer; transition: background 0.15s; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-primary:disabled { background: #c8c6c4; cursor: not-allowed; }
+    .btn-sm { display: inline-block; width: auto; padding: 4px 10px; font-size: 12px; border-radius: 4px; }
+    .btn-ghost { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+    .btn-ghost:hover { background: var(--info-bg); }
+
+    /* Progress */
+    .progress-wrap { margin: 8px 0; display: none; }
+    .progress-wrap.show { display: block; }
+    .progress-bar { height: 4px; background: #edebe9; border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
+    .progress-text { font-size: 11px; color: var(--muted); margin-top: 4px; text-align: center; }
+
+    /* Stats bar */
+    .stats { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+    .stat-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; cursor: pointer; }
+    .stat-badge.active { box-shadow: 0 0 0 2px var(--primary); }
+    .stat-error { background: var(--error-bg); color: var(--error); }
+    .stat-warning { background: var(--warning-bg); color: var(--warning); }
+    .stat-info { background: var(--info-bg); color: var(--info); }
+
+    /* Issue list */
+    .issue-list { max-height: 55vh; overflow-y: auto; }
+    .issue-item { padding: 8px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+    .issue-item:hover { background: #f3f2f1; }
+    .issue-item:last-child { border-bottom: none; }
+    .issue-cat { font-size: 10px; padding: 1px 6px; border-radius: 3px; color: #fff; display: inline-block; margin-bottom: 4px; }
+    .cat-spelling { background: #d13438; }
+    .cat-grammar { background: #ca5010; }
+    .cat-punctuation { background: #8764b8; }
+    .cat-terminology { background: #0078d4; }
+    .cat-consistency { background: #008272; }
+    .cat-expression { background: #69797e; }
+    .issue-original { color: var(--error); text-decoration: line-through; font-size: 12px; }
+    .issue-arrow { color: var(--muted); margin: 0 4px; font-size: 12px; }
+    .issue-suggestion { color: var(--success); font-weight: 600; font-size: 12px; }
+    .issue-reason { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .issue-para { font-size: 10px; color: var(--muted); float: right; }
+    .sev-error { border-left: 3px solid var(--error); padding-left: 8px; }
+    .sev-warning { border-left: 3px solid var(--warning); padding-left: 8px; }
+    .sev-info { border-left: 3px solid var(--info); padding-left: 8px; }
+
+    /* Actions */
+    .actions { display: flex; gap: 6px; margin-top: 10px; }
+
+    /* Settings */
+    .settings label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+    .settings input { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 20px; color: var(--muted); }
+    .empty .icon { font-size: 32px; margin-bottom: 8px; }
+
+    /* Scrollbar */
+    .issue-list::-webkit-scrollbar { width: 4px; }
+    .issue-list::-webkit-scrollbar-thumb { background: #c8c6c4; border-radius: 2px; }
   </style>
 </head>
 <body>
-  <h1>✍️ 智编编辑助手</h1>
-  <div id="status" class="status">初始化中...</div>
-  <button class="btn" id="btnCheck" disabled>术语一致性检查</button>
-  <button class="btn" id="btnPolish" disabled>学术润色</button>
-  <div id="output"></div>
+  <div id="app">
+    <div class="header">
+      <h1>✍️ 智编编辑助手</h1>
+      <span class="ver">v0.2.0</span>
+    </div>
 
-  <script>
-    var statusEl = document.getElementById('status');
-    var outputEl = document.getElementById('output');
-    var btnCheck = document.getElementById('btnCheck');
-    var btnPolish = document.getElementById('btnPolish');
+    <div id="statusBar" class="status-bar"></div>
 
-    Office.onReady(function(info) {
-      statusEl.textContent = '✅ 已连接 Word (' + info.host + ')';
-      statusEl.className = 'status ok';
-      btnCheck.disabled = false;
-      btnPolish.disabled = false;
-      document.title = 'QKSPARK-READY';
+    <!-- 编校卡片 -->
+    <div class="card">
+      <h2>📋 全文编校</h2>
+      <p class="hint">读取 Word 全文，AI 逐段检查语言问题</p>
+      <button id="btnProofread" class="btn btn-primary" disabled>开始编校</button>
+      <div id="progressWrap" class="progress-wrap">
+        <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+        <div id="progressText" class="progress-text"></div>
+      </div>
+    </div>
+
+    <!-- 结果面板 -->
+    <div id="resultPanel" class="card" style="display:none;">
+      <h2>📊 编校报告</h2>
+      <div id="statsBar" class="stats"></div>
+      <div id="issueList" class="issue-list"></div>
+      <div id="emptyState" class="empty" style="display:none;">
+        <div class="icon">✅</div>
+        <div>未发现问题，文稿质量不错！</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-sm btn-ghost" onclick="writeAllComments()">💬 写入批注</button>
+        <button class="btn btn-sm btn-ghost" onclick="exportReport()">📄 导出报告</button>
+      </div>
+    </div>
+
+    <!-- 设置 -->
+    <div class="card settings">
+      <h2>⚙️ 设置</h2>
+      <label for="apiUrl">后端地址</label>
+      <input id="apiUrl" type="text" value="http://192.168.28.178:8000" />
+    </div>
+  </div>
+
+<script>
+/* ============================================================
+   智编编辑助手 — taskpane.js (inline)
+   Phase 1: 全文编校 + 批注
+   ============================================================ */
+
+var officeReady = false;
+var allIssues = [];        // 编校结果
+var allParagraphs = [];    // Word 段落文本缓存
+var currentFilter = null;  // 当前筛选的 severity
+
+// ---- Office 初始化 ----
+Office.onReady(function(info) {
+  officeReady = true;
+  if (info.host === Office.HostType.Word) {
+    showStatus('✅ 已连接 Word', 'ok');
+    document.getElementById('btnProofread').disabled = false;
+    setTimeout(function() { hideStatus(); }, 2000);
+  } else {
+    showStatus('⚠️ 请在 Word 中打开此插件', 'err');
+  }
+});
+
+document.getElementById('btnProofread').addEventListener('click', startProofread);
+
+// ---- 状态栏 ----
+function showStatus(msg, type) {
+  var el = document.getElementById('statusBar');
+  el.textContent = msg;
+  el.className = 'status-bar show ' + (type || '');
+}
+function hideStatus() {
+  document.getElementById('statusBar').className = 'status-bar';
+}
+
+// ---- 进度条 ----
+function showProgress(pct, text) {
+  var wrap = document.getElementById('progressWrap');
+  wrap.className = 'progress-wrap show';
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = text || '';
+}
+function hideProgress() {
+  document.getElementById('progressWrap').className = 'progress-wrap';
+}
+
+// ---- 读取 Word 全文（段落级）----
+function readAllParagraphs() {
+  return Word.run(function(ctx) {
+    var paras = ctx.document.body.paragraphs;
+    paras.load('text');
+    return ctx.sync().then(function() {
+      var result = [];
+      for (var i = 0; i < paras.items.length; i++) {
+        var t = paras.items[i].text.trim();
+        if (t.length > 0) {
+          result.push({ index: i, text: t });
+        }
+      }
+      return result;
     });
+  });
+}
 
-    btnCheck.addEventListener('click', function() {
-      Word.run(function(context) {
-        var body = context.document.body;
-        body.load('text');
-        return context.sync().then(function() {
-          var text = body.text;
-          var len = text.length;
-          outputEl.textContent = '文档字数: ' + len + '\n前100字: ' + text.substring(0, 100);
-        });
-      }).catch(function(err) {
-        outputEl.textContent = '错误: ' + err.message;
+// ---- 主流程：全文编校 ----
+async function startProofread() {
+  var btn = document.getElementById('btnProofread');
+  btn.disabled = true;
+  btn.textContent = '编校中…';
+  allIssues = [];
+  currentFilter = null;
+  document.getElementById('resultPanel').style.display = 'none';
+
+  try {
+    // 1. 读取段落
+    showProgress(5, '正在读取文档…');
+    allParagraphs = await readAllParagraphs();
+    if (allParagraphs.length === 0) {
+      showStatus('⚠️ 文档为空', 'err');
+      return;
+    }
+    showProgress(15, '已读取 ' + allParagraphs.length + ' 个段落');
+
+    // 2. 分批发送到后端
+    var apiUrl = document.getElementById('apiUrl').value.replace(/\/+$/, '');
+    var batches = splitBatches(allParagraphs, 3000);
+    var totalBatches = batches.length;
+
+    for (var b = 0; b < totalBatches; b++) {
+      var pct = 15 + Math.round((b / totalBatches) * 75);
+      showProgress(pct, '编校中… 批次 ' + (b + 1) + '/' + totalBatches);
+
+      var resp = await fetch(apiUrl + '/api/proofread', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paragraphs: batches[b] })
+      });
+
+      if (!resp.ok) {
+        var errText = await resp.text();
+        throw new Error('后端错误 ' + resp.status + ': ' + errText);
+      }
+
+      var data = await resp.json();
+      if (data.issues && data.issues.length > 0) {
+        allIssues = allIssues.concat(data.issues);
+      }
+    }
+
+    // 3. 显示结果
+    showProgress(100, '编校完成');
+    setTimeout(hideProgress, 1000);
+    renderResults();
+    showStatus('✅ 编校完成，发现 ' + allIssues.length + ' 个问题', 'ok');
+
+  } catch (e) {
+    showStatus('❌ ' + e.message, 'err');
+    hideProgress();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '开始编校';
+  }
+}
+
+// ---- 段落分批（按字符数）----
+function splitBatches(paragraphs, maxChars) {
+  var batches = [];
+  var current = [];
+  var currentLen = 0;
+  for (var i = 0; i < paragraphs.length; i++) {
+    var pLen = paragraphs[i].text.length;
+    if (currentLen + pLen > maxChars && current.length > 0) {
+      batches.push(current);
+      current = [];
+      currentLen = 0;
+    }
+    current.push(paragraphs[i]);
+    currentLen += pLen;
+  }
+  if (current.length > 0) batches.push(current);
+  return batches;
+}
+
+// ---- 渲染结果 ----
+function renderResults() {
+  var panel = document.getElementById('resultPanel');
+  panel.style.display = 'block';
+
+  // 统计
+  var stats = { error: 0, warning: 0, info: 0 };
+  allIssues.forEach(function(iss) { stats[iss.severity] = (stats[iss.severity] || 0) + 1; });
+
+  var statsHtml = '';
+  if (stats.error > 0) statsHtml += '<span class="stat-badge stat-error" onclick="filterBySeverity(\'error\')">🔴 错误 ' + stats.error + '</span>';
+  if (stats.warning > 0) statsHtml += '<span class="stat-badge stat-warning" onclick="filterBySeverity(\'warning\')">🟡 存疑 ' + stats.warning + '</span>';
+  if (stats.info > 0) statsHtml += '<span class="stat-badge stat-info" onclick="filterBySeverity(\'info\')">🔵 建议 ' + stats.info + '</span>';
+  if (allIssues.length > 0) statsHtml += '<span class="stat-badge" style="background:#f3f2f1;color:#323130;" onclick="filterBySeverity(null)">全部 ' + allIssues.length + '</span>';
+  document.getElementById('statsBar').innerHTML = statsHtml;
+
+  renderIssueList(allIssues);
+}
+
+function filterBySeverity(sev) {
+  currentFilter = sev;
+  // 更新 badge active 状态
+  var badges = document.querySelectorAll('.stat-badge');
+  badges.forEach(function(b) { b.classList.remove('active'); });
+  event.target.classList.add('active');
+
+  if (!sev) {
+    renderIssueList(allIssues);
+  } else {
+    renderIssueList(allIssues.filter(function(iss) { return iss.severity === sev; }));
+  }
+}
+
+function renderIssueList(issues) {
+  var listEl = document.getElementById('issueList');
+  var emptyEl = document.getElementById('emptyState');
+
+  if (issues.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  var catLabels = {
+    spelling: '错别字', grammar: '语病', punctuation: '标点',
+    terminology: '术语', consistency: '一致性', expression: '表达'
+  };
+  var catClass = {
+    spelling: 'cat-spelling', grammar: 'cat-grammar', punctuation: 'cat-punctuation',
+    terminology: 'cat-terminology', consistency: 'cat-consistency', expression: 'cat-expression'
+  };
+
+  var html = '';
+  issues.forEach(function(iss, idx) {
+    var sevClass = 'sev-' + (iss.severity || 'info');
+    var cat = iss.category || 'expression';
+    html += '<div class="issue-item ' + sevClass + '" onclick="locateIssue(' + iss.paragraph_index + ')" title="点击定位到文档">';
+    html += '<span class="issue-para">¶' + (iss.paragraph_index + 1) + '</span>';
+    html += '<span class="issue-cat ' + (catClass[cat] || 'cat-expression') + '">' + (catLabels[cat] || cat) + '</span> ';
+    html += '<span class="issue-original">' + esc(iss.original || '') + '</span>';
+    html += '<span class="issue-arrow">→</span>';
+    html += '<span class="issue-suggestion">' + esc(iss.suggestion || '') + '</span>';
+    html += '<div class="issue-reason">' + esc(iss.reason || '') + '</div>';
+    html += '</div>';
+  });
+  listEl.innerHTML = html;
+}
+
+// ---- 点击定位到段落 ----
+function locateIssue(paraIndex) {
+  Word.run(function(ctx) {
+    var paras = ctx.document.body.paragraphs;
+    paras.load('text');
+    return ctx.sync().then(function() {
+      if (paraIndex < paras.items.length) {
+        var range = paras.items[paraIndex].getRange();
+        range.select();
+        range.font.highlightColor = '#FFFF00';
+        return ctx.sync();
+      }
+    });
+  }).catch(function(err) {
+    showStatus('⚠️ 定位失败: ' + err.message, 'err');
+  });
+}
+
+// ---- 批量写入批注 ----
+function writeAllComments() {
+  if (allIssues.length === 0) return;
+  var issuesToWrite = currentFilter
+    ? allIssues.filter(function(iss) { return iss.severity === currentFilter; })
+    : allIssues;
+
+  Word.run(function(ctx) {
+    var paras = ctx.document.body.paragraphs;
+    paras.load('text');
+    return ctx.sync().then(function() {
+      var written = 0;
+      issuesToWrite.forEach(function(iss) {
+        if (iss.paragraph_index < paras.items.length) {
+          var para = paras.items[iss.paragraph_index];
+          // 搜索原文片段并添加批注
+          var searchResults = para.search(iss.original, { matchCase: true, matchWholeWord: false });
+          searchResults.load('text');
+          ctx.sync().then(function() {
+            // 使用段落级批注作为 fallback
+          });
+
+          // 直接在段落上添加批注
+          var sevLabel = iss.severity === 'error' ? '🔴' : (iss.severity === 'warning' ? '🟡' : '🔵');
+          var commentText = sevLabel + ' [' + (iss.category || '') + '] ' + (iss.reason || '') + '\n建议：' + (iss.suggestion || '');
+          // Word.js Comment API: paragraph.insertComment(commentText)
+          // 需要 WordApi 1.4+
+          try {
+            para.getRange().insertComment(commentText);
+            written++;
+          } catch(e) {
+            // fallback: 如果 insertComment 不可用，跳过
+          }
+        }
+      });
+      return ctx.sync().then(function() {
+        showStatus('✅ 已写入 ' + issuesToWrite.length + ' 条批注', 'ok');
       });
     });
+  }).catch(function(err) {
+    showStatus('❌ 写入批注失败: ' + err.message, 'err');
+  });
+}
 
-    btnPolish.addEventListener('click', function() {
-      outputEl.textContent = '学术润色功能开发中...';
+// ---- 导出报告（纯文本）----
+function exportReport() {
+  if (allIssues.length === 0) return;
+  var lines = ['智编编辑助手 — 编校报告', '=' .repeat(40), ''];
+  var sevLabels = { error: '🔴 错误', warning: '🟡 存疑', info: '🔵 建议' };
+  var catLabels = {
+    spelling: '错别字', grammar: '语病', punctuation: '标点',
+    terminology: '术语', consistency: '一致性', expression: '表达'
+  };
+
+  allIssues.forEach(function(iss, idx) {
+    lines.push((idx + 1) + '. ' + (sevLabels[iss.severity] || '') + ' [' + (catLabels[iss.category] || iss.category) + '] 段落' + (iss.paragraph_index + 1));
+    lines.push('   原文：' + (iss.original || ''));
+    lines.push('   建议：' + (iss.suggestion || ''));
+    lines.push('   原因：' + (iss.reason || ''));
+    lines.push('');
+  });
+
+  // 写入文档末尾
+  Word.run(function(ctx) {
+    var body = ctx.document.body;
+    body.insertParagraph('', 'End');
+    body.insertParagraph(lines.join('\n'), 'End');
+    return ctx.sync().then(function() {
+      showStatus('✅ 报告已插入文档末尾', 'ok');
     });
+  }).catch(function(err) {
+    showStatus('❌ 导出失败: ' + err.message, 'err');
+  });
+}
 
-    window.onerror = function(msg, url, line) {
-      statusEl.textContent = '❌ ' + msg;
-      statusEl.className = 'status err';
-    };
-  </script>
+// ---- HTML 转义 ----
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+</script>
 </body>
 </html>
