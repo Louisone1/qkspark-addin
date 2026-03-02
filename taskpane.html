@@ -100,7 +100,7 @@
   <div class="header">
     <span style="font-size:20px">📝</span>
     <h1>智编编辑助手</h1>
-    <span class="ver">v0.3.0</span>
+    <span class="ver">v0.4.0</span>
   </div>
 
   <div id="statusBar" class="status-bar"></div>
@@ -129,6 +129,36 @@
     <h2>📚 文献核查结果</h2>
     <div id="refSummaryBar" class="summary-bar"></div>
     <div id="refIssueList" class="issue-list" style="margin-top:8px"></div>
+  </div>
+
+  <!-- 文献统计分析面板 -->
+  <div id="refStatsCard" class="card" style="display:none">
+    <h2>📊 文献统计分析</h2>
+    <div id="refStatsGrid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:8px 0">
+      <div style="text-align:center; padding:8px; background:var(--info-bg); border-radius:var(--radius)">
+        <div style="font-size:20px; font-weight:700; color:var(--info)" id="statTotal">0</div>
+        <div style="font-size:10px; color:var(--muted)">文献总数</div>
+      </div>
+      <div style="text-align:center; padding:8px; background:var(--success-bg); border-radius:var(--radius)">
+        <div style="font-size:20px; font-weight:700; color:var(--success)" id="statDoi">0</div>
+        <div style="font-size:10px; color:var(--muted)">有 DOI</div>
+      </div>
+      <div style="text-align:center; padding:8px; background:#fff4ce; border-radius:var(--radius)">
+        <div style="font-size:20px; font-weight:700; color:var(--warning)" id="statChinese">0</div>
+        <div style="font-size:10px; color:var(--muted)">中文文献</div>
+      </div>
+    </div>
+
+    <div id="refYearWarning" style="display:none; font-size:11px; color:var(--warning); padding:6px 8px; background:var(--warning-bg); border-radius:4px; margin-bottom:8px"></div>
+
+    <h3 style="font-size:12px; margin:10px 0 4px 0">📅 年份分布</h3>
+    <div id="yearDistChart" style="font-size:11px"></div>
+
+    <h3 style="font-size:12px; margin:10px 0 4px 0">📑 文献类型</h3>
+    <div id="typeDistChart" style="font-size:11px"></div>
+
+    <h3 style="font-size:12px; margin:10px 0 4px 0">📰 引用期刊 TOP 5</h3>
+    <div id="journalTop5" style="font-size:11px"></div>
   </div>
 
   <div id="resultCard" class="card" style="display:none">
@@ -711,6 +741,8 @@ function startRefCheck() {
       .then(function(data) {
         document.getElementById('refProgressText').textContent = '';
         renderRefResults(data);
+        // 同时请求统计分析
+        fetchRefStats(refsText);
       })
       .catch(function(err) {
         document.getElementById('refProgressText').textContent = '核查失败: ' + err.message;
@@ -735,7 +767,7 @@ function renderRefResults(data) {
   }
 
   var sevIcon = { error: '🔴', warning: '🟡', info: '🔵' };
-  var catLabel = { format: '格式', doi: 'DOI', metadata: '元数据', citation: '引用' };
+  var catLabel = { format: '格式', doi: 'DOI', metadata: '元数据', citation: '引用', duplicate: '重复' };
   var html = '';
   data.issues.forEach(function(iss) {
     html += '<div class="issue-item" style="margin-bottom:8px; padding:8px; border-left:3px solid ' +
@@ -823,6 +855,100 @@ function deleteKnowledge(source) {
 
 // 页面加载时刷新知识库状态
 try { loadKnowledge(); } catch(e) {}
+
+// ========== 文献统计分析 ==========
+
+function fetchRefStats(refsText) {
+  fetch(getApiBase() + '/api/refs-stats', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refs_text: refsText, verify_dois: false })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(stats) {
+    renderRefStats(stats);
+  })
+  .catch(function(err) {
+    console.log('统计分析失败:', err);
+  });
+}
+
+function renderRefStats(stats) {
+  var card = document.getElementById('refStatsCard');
+  card.style.display = 'block';
+
+  // 基础数字
+  document.getElementById('statTotal').textContent = stats.total || 0;
+  document.getElementById('statDoi').textContent = stats.with_doi || 0;
+  document.getElementById('statChinese').textContent = stats.chinese || 0;
+
+  // 年份警告
+  var yw = document.getElementById('refYearWarning');
+  if (stats.year_warning) {
+    yw.style.display = 'block';
+    yw.textContent = '⚠️ ' + stats.year_warning;
+  } else {
+    yw.style.display = 'none';
+  }
+
+  // 年份分布（水平条形图）
+  var yearChart = document.getElementById('yearDistChart');
+  if (stats.year_dist && Object.keys(stats.year_dist).length > 0) {
+    var maxCount = Math.max.apply(null, Object.values(stats.year_dist));
+    var yearHtml = '';
+    var years = Object.keys(stats.year_dist).sort();
+    years.forEach(function(y) {
+      var c = stats.year_dist[y];
+      var pct = (c / maxCount * 100).toFixed(0);
+      yearHtml += '<div style="display:flex; align-items:center; gap:6px; margin:2px 0">';
+      yearHtml += '<span style="width:36px; text-align:right; color:var(--muted)">' + y + '</span>';
+      yearHtml += '<div style="flex:1; background:#edebe9; border-radius:2px; height:14px; overflow:hidden">';
+      yearHtml += '<div style="width:' + pct + '%; height:100%; background:var(--primary); border-radius:2px; transition:width 0.3s"></div>';
+      yearHtml += '</div>';
+      yearHtml += '<span style="width:20px; font-weight:600">' + c + '</span>';
+      yearHtml += '</div>';
+    });
+    yearChart.innerHTML = yearHtml;
+  } else {
+    yearChart.innerHTML = '<span style="color:var(--muted)">无年份数据</span>';
+  }
+
+  // 类型分布
+  var typeChart = document.getElementById('typeDistChart');
+  var typeLabels = {
+    journal: '📄 期刊', book: '📚 图书', thesis: '🎓 学位论文',
+    conference: '🎤 会议', report: '📋 报告', other: '📎 其他'
+  };
+  if (stats.type_dist && Object.keys(stats.type_dist).length > 0) {
+    var typeHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px">';
+    for (var t in stats.type_dist) {
+      var label = typeLabels[t] || t;
+      typeHtml += '<span style="padding:2px 8px; background:#f3f2f1; border-radius:999px; font-size:11px">';
+      typeHtml += label + ' <b>' + stats.type_dist[t] + '</b>';
+      typeHtml += '</span>';
+    }
+    typeHtml += '</div>';
+    typeChart.innerHTML = typeHtml;
+  } else {
+    typeChart.innerHTML = '<span style="color:var(--muted)">无类型数据</span>';
+  }
+
+  // 期刊 TOP 5
+  var journalDiv = document.getElementById('journalTop5');
+  if (stats.journal_top5 && stats.journal_top5.length > 0) {
+    var jHtml = '';
+    stats.journal_top5.forEach(function(item, idx) {
+      jHtml += '<div style="display:flex; align-items:center; gap:6px; margin:3px 0; padding:3px 0; border-bottom:1px solid var(--border)">';
+      jHtml += '<span style="width:16px; font-weight:700; color:var(--primary)">' + (idx + 1) + '</span>';
+      jHtml += '<span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">' + item.journal + '</span>';
+      jHtml += '<span style="font-weight:600">' + item.count + '篇</span>';
+      jHtml += '</div>';
+    });
+    journalDiv.innerHTML = jHtml;
+  } else {
+    journalDiv.innerHTML = '<span style="color:var(--muted)">无期刊数据</span>';
+  }
+}
 
 </script>
 </body>
