@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>智编编辑助手</title>
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <link rel="stylesheet" href="./taskpane.css"/>
+    <link rel="stylesheet" href="./taskpane.css"/>
 </head>
 <body>
 <div id="app">
   <div class="header">
     <span style="font-size:20px">📝</span>
     <h1>智编编辑助手</h1>
-    <span class="ver">v0.4.0</span>
+    <span class="ver">v0.3.0</span>
   </div>
 
   <div id="statusBar" class="status-bar"></div>
@@ -43,35 +43,6 @@
     <div id="refIssueList" class="issue-list" style="margin-top:8px"></div>
   </div>
 
-  <div id="refStatsCard" class="card" style="display:none">
-    <h2>📊 文献统计分析</h2>
-    <div id="refStatsGrid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:8px 0">
-      <div style="text-align:center; padding:8px; background:var(--info-bg); border-radius:var(--radius)">
-        <div style="font-size:20px; font-weight:700; color:var(--info)" id="statTotal">0</div>
-        <div style="font-size:10px; color:var(--muted)">文献总数</div>
-      </div>
-      <div style="text-align:center; padding:8px; background:var(--success-bg); border-radius:var(--radius)">
-        <div style="font-size:20px; font-weight:700; color:var(--success)" id="statDoi">0</div>
-        <div style="font-size:10px; color:var(--muted)">有 DOI</div>
-      </div>
-      <div style="text-align:center; padding:8px; background:#fff4ce; border-radius:var(--radius)">
-        <div style="font-size:20px; font-weight:700; color:var(--warning)" id="statChinese">0</div>
-        <div style="font-size:10px; color:var(--muted)">中文文献</div>
-      </div>
-    </div>
-
-    <div id="refYearWarning" style="display:none; font-size:11px; color:var(--warning); padding:6px 8px; background:var(--warning-bg); border-radius:4px; margin-bottom:8px"></div>
-
-    <h3 style="font-size:12px; margin:10px 0 4px 0">📅 年份分布</h3>
-    <div id="yearDistChart" style="font-size:11px"></div>
-
-    <h3 style="font-size:12px; margin:10px 0 4px 0">📑 文献类型</h3>
-    <div id="typeDistChart" style="font-size:11px"></div>
-
-    <h3 style="font-size:12px; margin:10px 0 4px 0">📰 引用期刊 TOP 5</h3>
-    <div id="journalTop5" style="font-size:11px"></div>
-  </div>
-
   <div id="resultCard" class="card" style="display:none">
     <h2>📊 编校报告</h2>
 
@@ -93,6 +64,7 @@
     </div>
   </div>
 
+  <!-- 知识库管理 -->
   <div class="card" style="margin-top:10px">
     <h2 style="font-size:13px; margin:0 0 8px 0">📚 知识库</h2>
     <div id="kbStatus" style="font-size:11px; color:var(--muted); margin-bottom:8px">加载中...</div>
@@ -110,6 +82,6 @@
   </div>
 </div>
 
-<script src="./taskpane.js"></script>
+  <script src="./taskpane.js"></script>
 </body>
 </html>

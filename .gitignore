@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Env
+.env
+.env.*
+
+# Logs / runtime
+*.log
+*.pid
+backend/logs/
+logs/
+
+# Local data
+backend/data/knowledge.db
+
+# OS
+.DS_Store
