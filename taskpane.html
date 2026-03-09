@@ -5,7 +5,95 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>智编编辑助手</title>
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <link rel="stylesheet" href="./taskpane.css"/>
+  <style>
+    :root {
+      --primary: #0078d4;
+      --primary-hover: #106ebe;
+      --error: #d13438;
+      --error-bg: #fde7e9;
+      --warning: #ca5010;
+      --warning-bg: #fff4ce;
+      --info: #0078d4;
+      --info-bg: #deecf9;
+      --success: #107c10;
+      --success-bg: #dff6dd;
+      --bg: #f5f5f5;
+      --card: #fff;
+      --border: #edebe9;
+      --text: #323130;
+      --muted: #605e5c;
+      --radius: 6px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; }
+    #app { padding: 12px; width: 100%; }
+    .header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .header h1 { font-size: 16px; color: var(--primary); }
+    .header .ver { font-size: 11px; color: var(--muted); }
+    .status-bar { padding: 6px 10px; border-radius: var(--radius); margin-bottom: 10px; font-size: 12px; text-align: center; display: none; }
+    .status-bar.show { display: block; }
+    .status-bar.ok { background: var(--success-bg); color: var(--success); }
+    .status-bar.err { background: var(--error-bg); color: var(--error); }
+    .status-bar.loading { background: var(--info-bg); color: var(--info); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; }
+    .card h2 { font-size: 14px; margin-bottom: 6px; }
+    .card .hint { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .btn { display: block; width: 100%; padding: 9px; border: none; border-radius: var(--radius); font-size: 13px; cursor: pointer; transition: background 0.15s; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-primary:disabled { background: #c8c6c4; cursor: not-allowed; }
+    .btn-sm { display: inline-block; width: auto; padding: 4px 10px; font-size: 12px; border-radius: 4px; }
+    .btn-ghost { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+    .btn-ghost:hover { background: var(--info-bg); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #0b6a0b; }
+    .btn-danger { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-danger:hover { background: #f3f2f1; }
+    .progress-wrap { margin: 8px 0; display: none; }
+    .progress-wrap.show { display: block; }
+    .progress-bar { height: 4px; background: #edebe9; border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
+    .progress-text { font-size: 11px; color: var(--muted); margin-top: 4px; text-align: center; }
+    .stats { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+    .stat-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; cursor: pointer; }
+    .stat-badge.active { box-shadow: 0 0 0 2px var(--primary); }
+    .stat-error { background: var(--error-bg); color: var(--error); }
+    .stat-warning { background: var(--warning-bg); color: var(--warning); }
+    .stat-info { background: var(--info-bg); color: var(--info); }
+    .issue-list { max-height: 55vh; overflow-y: auto; }
+    .issue-item { padding: 10px; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    .issue-item:last-child { border-bottom: none; }
+    .issue-item.resolved { opacity: 0.5; }
+    .issue-item.resolved .issue-content { text-decoration: line-through; }
+    .issue-cat { font-size: 10px; padding: 1px 6px; border-radius: 3px; color: #fff; display: inline-block; margin-bottom: 4px; }
+    .cat-spelling { background: #d13438; }
+    .cat-grammar { background: #ca5010; }
+    .cat-punctuation { background: #8764b8; }
+    .cat-terminology { background: #0078d4; }
+    .cat-consistency { background: #00b7c3; }
+    .cat-expression { background: #498205; }
+    .issue-sev { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+    .sev-error { background: var(--error); }
+    .sev-warning { background: var(--warning); }
+    .sev-info { background: var(--info); }
+    .issue-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .issue-para { font-size: 10px; color: var(--muted); }
+    .issue-content { margin-bottom: 6px; }
+    .issue-original { color: var(--error); text-decoration: line-through; }
+    .issue-arrow { color: var(--muted); margin: 0 4px; }
+    .issue-suggestion { color: var(--success); font-weight: 600; }
+    .issue-reason { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .issue-actions { display: flex; gap: 6px; }
+    .issue-status { font-size: 11px; padding: 2px 8px; border-radius: 3px; display: inline-block; margin-top: 4px; }
+    .status-accepted { background: var(--success-bg); color: var(--success); }
+    .status-ignored { background: #f3f2f1; color: var(--muted); }
+    .batch-actions { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+    .summary-bar { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin: 8px 0; padding: 6px 10px; background: #f3f2f1; border-radius: var(--radius); }
+    .summary-bar span { display: inline-flex; align-items: center; gap: 3px; }
+    .settings-section { margin-top: 8px; }
+    .settings-section label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+    .settings-section input { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
+  </style>
 </head>
 <body>
 <div id="app">
@@ -43,6 +131,7 @@
     <div id="refIssueList" class="issue-list" style="margin-top:8px"></div>
   </div>
 
+  <!-- 文献统计分析面板 -->
   <div id="refStatsCard" class="card" style="display:none">
     <h2>📊 文献统计分析</h2>
     <div id="refStatsGrid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:8px 0">
@@ -87,12 +176,13 @@
     <div id="issueList" class="issue-list"></div>
 
     <div style="display:flex; gap:8px; margin-top:10px">
-      <button class="btn btn-sm btn-ghost" onclick="writeComments()">🖍️ 修订标记</button>
+      <button class="btn btn-sm btn-ghost" onclick="writeComments()">💬 写入批注</button>
       <button class="btn btn-sm btn-ghost" onclick="exportReport()">📄 导出报告</button>
       <button class="btn btn-sm btn-danger" onclick="clearResults()">🗑️ 清除报告</button>
     </div>
   </div>
 
+  <!-- 知识库管理 -->
   <div class="card" style="margin-top:10px">
     <h2 style="font-size:13px; margin:0 0 8px 0">📚 知识库</h2>
     <div id="kbStatus" style="font-size:11px; color:var(--muted); margin-bottom:8px">加载中...</div>
@@ -110,6 +200,756 @@
   </div>
 </div>
 
-<script src="./taskpane.js"></script>
+<script>
+var allIssues = [];
+var issueStates = {}; // idx -> 'pending' | 'accepted' | 'ignored'
+var currentFilter = 'all';
+
+Office.onReady(function(info) {
+  if (info.host === Office.HostType.Word) {
+    showStatus('✅ Word 已连接', 'ok');
+    setTimeout(function() { hideStatus(); }, 2000);
+  }
+});
+
+function getApiBase() {
+  var v = document.getElementById('apiUrl').value.trim();
+  return v ? v.replace(/\/+$/, '') : '';
+}
+
+function showStatus(msg, type) {
+  var el = document.getElementById('statusBar');
+  el.textContent = msg;
+  el.className = 'status-bar show ' + (type || '');
+}
+function hideStatus() {
+  document.getElementById('statusBar').className = 'status-bar';
+}
+
+function startProofread() {
+  var btn = document.getElementById('btnProofread');
+  btn.disabled = true;
+  btn.textContent = '编校中...';
+  showStatus('正在读取文档...', 'loading');
+
+  Word.run(function(ctx) {
+    var paragraphs = ctx.document.body.paragraphs;
+    paragraphs.load('text');
+    return ctx.sync().then(function() {
+      var items = [];
+      for (var i = 0; i < paragraphs.items.length; i++) {
+        var t = paragraphs.items[i].text.trim();
+        if (t.length > 0) {
+          items.push({ index: i, text: t });
+        }
+      }
+      return callProofread(items);
+    });
+  }).catch(function(err) {
+    showStatus('❌ 读取文档失败: ' + err.message, 'err');
+    btn.disabled = false;
+    btn.textContent = '开始编校';
+  });
+}
+
+function callProofread(paragraphs) {
+  var btn = document.getElementById('btnProofread');
+  var pw = document.getElementById('progressWrap');
+  var pf = document.getElementById('progressFill');
+  var pt = document.getElementById('progressText');
+  pw.className = 'progress-wrap show';
+
+  var batchSize = 10;
+  var batches = [];
+  for (var i = 0; i < paragraphs.length; i += batchSize) {
+    batches.push(paragraphs.slice(i, i + batchSize));
+  }
+
+  allIssues = [];
+  issueStates = {};
+  var done = 0;
+
+  function nextBatch(idx) {
+    if (idx >= batches.length) {
+      pf.style.width = '100%';
+      pt.textContent = '编校完成';
+      btn.disabled = false;
+      btn.textContent = '开始编校';
+      showStatus('✅ 编校完成，共发现 ' + allIssues.length + ' 处问题', 'ok');
+      renderResults();
+      return;
+    }
+    pt.textContent = '编校中... 批次 ' + (idx + 1) + '/' + batches.length;
+    pf.style.width = ((idx + 1) / batches.length * 100) + '%';
+
+    fetch(getApiBase() + '/api/proofread', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paragraphs: batches[idx] })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.issues) {
+        data.issues.forEach(function(iss) {
+          var gIdx = allIssues.length;
+          issueStates[gIdx] = 'pending';
+          allIssues.push(iss);
+        });
+      }
+      nextBatch(idx + 1);
+    })
+    .catch(function(err) {
+      showStatus('❌ 编校失败: ' + err.message, 'err');
+      btn.disabled = false;
+      btn.textContent = '开始编校';
+    });
+  }
+
+  nextBatch(0);
+}
+
+function renderResults() {
+  var rc = document.getElementById('resultCard');
+  rc.style.display = 'block';
+
+  var counts = { error: 0, warning: 0, info: 0 };
+  allIssues.forEach(function(iss) {
+    var s = iss.severity || 'info';
+    counts[s] = (counts[s] || 0) + 1;
+  });
+
+  var sb = document.getElementById('statsBar');
+  sb.innerHTML =
+    '<span class="stat-badge stat-error' + (currentFilter === 'error' ? ' active' : '') + '" onclick="filterBy(\'error\')">🔴 错误 ' + counts.error + '</span>' +
+    '<span class="stat-badge stat-warning' + (currentFilter === 'warning' ? ' active' : '') + '" onclick="filterBy(\'warning\')">🟡 存疑 ' + counts.warning + '</span>' +
+    '<span class="stat-badge stat-info' + (currentFilter === 'info' ? ' active' : '') + '" onclick="filterBy(\'info\')">🔵 建议 ' + counts.info + '</span>' +
+    '<span class="stat-badge' + (currentFilter === 'all' ? ' active' : '') + '" onclick="filterBy(\'all\')">全部 ' + allIssues.length + '</span>';
+
+  document.getElementById('batchActions').style.display = allIssues.length > 0 ? 'flex' : 'none';
+
+  updateSummary();
+  renderIssueList();
+}
+
+function updateSummary() {
+  var accepted = 0, ignored = 0, pending = 0;
+  for (var k in issueStates) {
+    if (issueStates[k] === 'accepted') accepted++;
+    else if (issueStates[k] === 'ignored') ignored++;
+    else pending++;
+  }
+  var bar = document.getElementById('summaryBar');
+  if (accepted > 0 || ignored > 0) {
+    bar.style.display = 'flex';
+    bar.innerHTML =
+      '<span>✅ 已修复 ' + accepted + '</span>' +
+      '<span>⊘ 已忽略 ' + ignored + '</span>' +
+      '<span>⏳ 待处理 ' + pending + '</span>';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function renderIssueList() {
+  var list = document.getElementById('issueList');
+  var catLabels = {
+    spelling: '错别字', grammar: '语病', punctuation: '标点',
+    terminology: '术语', consistency: '一致性', expression: '表达'
+  };
+  var catClass = {
+    spelling: 'cat-spelling', grammar: 'cat-grammar', punctuation: 'cat-punctuation',
+    terminology: 'cat-terminology', consistency: 'cat-consistency', expression: 'cat-expression'
+  };
+
+  var html = '';
+  allIssues.forEach(function(iss, idx) {
+    if (currentFilter !== 'all' && iss.severity !== currentFilter) return;
+
+    var state = issueStates[idx] || 'pending';
+    var resolved = state !== 'pending';
+    var sevClass = 'sev-' + (iss.severity || 'info');
+
+    html += '<div class="issue-item' + (resolved ? ' resolved' : '') + '" id="issue-' + idx + '">';
+    html += '<div class="issue-header">';
+    html += '<div><span class="issue-cat ' + (catClass[iss.category] || 'cat-expression') + '">' + (catLabels[iss.category] || iss.category) + '</span></div>';
+    html += '<span class="issue-para">¶' + (iss.paragraph_index + 1) + '</span>';
+    html += '</div>';
+
+    html += '<div class="issue-content">';
+    html += '<span class="issue-sev ' + sevClass + '"></span>';
+    html += '<span class="issue-original">' + esc(iss.original) + '</span>';
+    html += '<span class="issue-arrow">→</span>';
+    html += '<span class="issue-suggestion">' + esc(iss.suggestion) + '</span>';
+    html += '</div>';
+
+    html += '<div class="issue-reason">' + esc(iss.reason) + '</div>';
+
+    if (state === 'accepted') {
+      html += '<span class="issue-status status-accepted">✅ 已修复</span>';
+    } else if (state === 'ignored') {
+      html += '<span class="issue-status status-ignored">⊘ 已忽略</span>';
+      html += ' <button class="btn btn-sm btn-ghost" style="margin-top:4px" onclick="undoIssue(' + idx + ')">↩ 撤销</button>';
+    } else {
+      html += '<div class="issue-actions">';
+      html += '<button class="btn btn-sm btn-success" onclick="acceptIssue(' + idx + ')">✅ 采纳</button>';
+      html += '<button class="btn btn-sm btn-danger" onclick="ignoreIssue(' + idx + ')">⊘ 忽略</button>';
+      html += '<button class="btn btn-sm btn-ghost" onclick="locateIssue(' + idx + ')">📍 定位</button>';
+      html += '</div>';
+    }
+
+    html += '</div>';
+  });
+
+  list.innerHTML = html || '<div style="text-align:center;color:var(--muted);padding:20px">🎉 没有发现问题</div>';
+}
+
+function filterBy(type) {
+  currentFilter = type;
+  renderResults();
+}
+
+function acceptIssue(idx) {
+  var iss = allIssues[idx];
+  if (!iss || !iss.original || !iss.suggestion) {
+    showStatus('❌ 该问题缺少替换信息', 'err');
+    return;
+  }
+
+  Word.run(function(ctx) {
+    // 全文搜索，不依赖 paragraph_index（避免索引偏移问题）
+    var searchResults = ctx.document.body.search(iss.original, { matchCase: false, matchWholeWord: false });
+    searchResults.load('text');
+    return ctx.sync().then(function() {
+      if (searchResults.items.length > 0) {
+        searchResults.items[0].insertText(iss.suggestion, 'Replace');
+        return ctx.sync().then(function() {
+          issueStates[idx] = 'accepted';
+          renderResults();
+          showStatus('✅ 已替换: ' + iss.original + ' → ' + iss.suggestion, 'ok');
+        });
+      } else {
+        showStatus('⚠️ 未找到原文"' + iss.original + '"，可能已被修改', 'err');
+      }
+    });
+  }).catch(function(err) {
+    showStatus('❌ 替换失败: ' + err.message, 'err');
+  });
+}
+
+function ignoreIssue(idx) {
+  issueStates[idx] = 'ignored';
+  renderResults();
+}
+
+function undoIssue(idx) {
+  issueStates[idx] = 'pending';
+  renderResults();
+}
+
+function locateIssue(idx) {
+  var iss = allIssues[idx];
+  Word.run(function(ctx) {
+    if (iss.original) {
+      var searchResults = ctx.document.body.search(iss.original, { matchCase: false });
+      searchResults.load('text');
+      return ctx.sync().then(function() {
+        if (searchResults.items.length > 0) {
+          searchResults.items[0].select();
+        }
+        return ctx.sync();
+      });
+    } else {
+      var paragraphs = ctx.document.body.paragraphs;
+      paragraphs.load('text');
+      return ctx.sync().then(function() {
+        var pIdx = iss.paragraph_index;
+        if (pIdx >= 0 && pIdx < paragraphs.items.length) {
+          paragraphs.items[pIdx].select();
+          return ctx.sync();
+        }
+      });
+    }
+  }).catch(function(err) {
+    showStatus('❌ 定位失败: ' + err.message, 'err');
+  });
+}
+
+function batchAcceptAll() {
+  var toAccept = [];
+  allIssues.forEach(function(iss, idx) {
+    if (issueStates[idx] !== 'pending') return;
+    if (iss.original && iss.suggestion) toAccept.push(idx);
+  });
+
+  if (toAccept.length === 0) {
+    showStatus('没有可采纳的问题', 'ok');
+    return;
+  }
+
+  if (!confirm('确认全部采纳（共 ' + toAccept.length + ' 处）？将直接修改文档内容。')) return;
+
+  showStatus('正在批量替换...', 'loading');
+
+  Word.run(function(ctx) {
+    var searchPairs = [];
+    toAccept.forEach(function(idx) {
+      var iss = allIssues[idx];
+      var sr = ctx.document.body.search(iss.original, { matchCase: false, matchWholeWord: false });
+      sr.load('text');
+      searchPairs.push({ idx: idx, sr: sr, iss: iss });
+    });
+    return ctx.sync().then(function() {
+      var replaced = 0;
+      searchPairs.forEach(function(p) {
+        if (p.sr.items.length > 0) {
+          p.sr.items[0].insertText(p.iss.suggestion, 'Replace');
+          issueStates[p.idx] = 'accepted';
+          replaced++;
+        }
+      });
+      return ctx.sync().then(function() {
+        renderResults();
+        showStatus('✅ 已替换 ' + replaced + ' 处', 'ok');
+      });
+    });
+  }).catch(function(err) {
+    showStatus('❌ 批量替换失败: ' + err.message, 'err');
+  });
+}
+
+function batchIgnoreAll() {
+  var toIgnore = 0;
+  allIssues.forEach(function(iss, idx) {
+    if (issueStates[idx] === 'pending') {
+      issueStates[idx] = 'ignored';
+      toIgnore++;
+    }
+  });
+  renderResults();
+  showStatus('已忽略 ' + toIgnore + ' 处问题', 'ok');
+}
+
+function clearResults() {
+  showStatus('正在清除文档中的报告...', 'loading');
+  Word.run(function(ctx) {
+    // 搜索报告分隔线
+    var sepResults = ctx.document.body.search('————————————————————', { matchCase: true });
+    sepResults.load('text');
+    return ctx.sync().then(function() {
+      if (sepResults.items.length === 0) {
+        showStatus('文档中没有找到编校报告', 'ok');
+        return;
+      }
+      // 取最后一个分隔线（最近一次导出的报告）
+      var sepRange = sepResults.items[sepResults.items.length - 1];
+      var endRange = ctx.document.body.getRange('End');
+      var reportRange = sepRange.expandTo(endRange);
+      reportRange.delete();
+      return ctx.sync().then(function() {
+        showStatus('✅ 已清除文档中的编校报告', 'ok');
+      });
+    });
+  }).catch(function(err) {
+    showStatus('❌ 清除失败: ' + err.message, 'err');
+  });
+}
+
+function writeComments() {
+  var pending = [];
+  allIssues.forEach(function(iss, idx) {
+    if (issueStates[idx] === 'accepted') return;
+    if (iss.original) pending.push(iss);
+  });
+
+  if (pending.length === 0) {
+    showStatus('没有需要写入批注的问题', 'ok');
+    return;
+  }
+
+  showStatus('正在写入批注...', 'loading');
+
+  Word.run(function(ctx) {
+    var searchPairs = [];
+    pending.forEach(function(iss) {
+      var sr = ctx.document.body.search(iss.original, { matchCase: false });
+      sr.load('text');
+      searchPairs.push({ sr: sr, iss: iss });
+    });
+    return ctx.sync().then(function() {
+      var written = 0;
+      searchPairs.forEach(function(p) {
+        if (p.sr.items.length > 0) {
+          var range = p.sr.items[0];
+          // 先尝试 insertComment（Office 2021+），失败则用高亮+尾注方式
+          try {
+            var sevLabel = { error: '\u{1F534}', warning: '\u{1F7E1}', info: '\u{1F535}' };
+            var comment = (sevLabel[p.iss.severity] || '') + ' ' + (p.iss.suggestion || '') + ' | ' + (p.iss.reason || '');
+            range.insertComment(comment);
+            written++;
+          } catch(e) {
+            // Fallback: 高亮原文 + 在后面插入批注文本
+            range.font.highlightColor = p.iss.severity === 'error' ? 'Red' : (p.iss.severity === 'warning' ? 'Yellow' : 'Turquoise');
+            var note = ' [' + (p.iss.suggestion || '') + ']';
+            var inserted = range.insertText(note, 'After');
+            inserted.font.color = '#c00000';
+            inserted.font.size = 8;
+            inserted.font.italic = true;
+            written++;
+          }
+        }
+      });
+      return ctx.sync().then(function() {
+        showStatus('\u2705 已写入 ' + written + ' 条批注', 'ok');
+      });
+    });
+  }).catch(function(err) {
+    showStatus('\u274C 批注写入失败: ' + err.message, 'err');
+  });
+}
+
+function exportReport() {
+  if (allIssues.length === 0) return;
+
+  var sevLabels = { error: '\u{1F534} 错误', warning: '\u{1F7E1} 存疑', info: '\u{1F535} 建议' };
+  var catLabels = {
+    spelling: '错别字', grammar: '语病', punctuation: '标点',
+    terminology: '术语', consistency: '一致性', expression: '表达'
+  };
+  var stateLabels = { accepted: '\u2705已修复', ignored: '\u2298已忽略', pending: '\u23F3待处理' };
+
+  var accepted = 0, ignored = 0, pendingCount = 0;
+  for (var k in issueStates) {
+    if (issueStates[k] === 'accepted') accepted++;
+    else if (issueStates[k] === 'ignored') ignored++;
+    else pendingCount++;
+  }
+
+  Word.run(function(ctx) {
+    var body = ctx.document.body;
+    // 分隔线
+    var sep = body.insertParagraph('————————————————————', 'End');
+    sep.font.color = '#c8c6c4';
+    // 标题
+    var title = body.insertParagraph('智编编辑助手 — 编校报告', 'End');
+    title.font.bold = true;
+    title.font.size = 12;
+    title.font.color = '#0078d4';
+    // 统计
+    var stats = body.insertParagraph('已修复: ' + accepted + '  |  已忽略: ' + ignored + '  |  待处理: ' + pendingCount, 'End');
+    stats.font.size = 10;
+    body.insertParagraph('', 'End');
+    // 逐条
+    allIssues.forEach(function(iss, idx) {
+      var state = issueStates[idx] || 'pending';
+      var line1 = (idx + 1) + '. ' + (sevLabels[iss.severity] || '') + ' [' + (catLabels[iss.category] || iss.category) + '] — ' + stateLabels[state];
+      var p1 = body.insertParagraph(line1, 'End');
+      p1.font.bold = true;
+      p1.font.size = 10;
+
+      if (iss.original) {
+        body.insertParagraph('   原文：' + iss.original, 'End');
+      }
+      if (iss.suggestion) {
+        body.insertParagraph('   建议：' + iss.suggestion, 'End');
+      }
+      if (iss.reason) {
+        var rp = body.insertParagraph('   ' + iss.reason, 'End');
+        rp.font.color = '#605e5c';
+        rp.font.size = 10;
+      }
+    });
+
+    return ctx.sync().then(function() {
+      showStatus('\u2705 报告已插入文档末尾', 'ok');
+    });
+  }).catch(function(err) {
+    showStatus('\u274C 导出失败: ' + err.message, 'err');
+  });
+}
+
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+// ========== 参考文献核查 ==========
+
+function startRefCheck() {
+  var verifyDoi = document.getElementById('chkVerifyDoi').checked;
+  document.getElementById('refProgressText').textContent = '正在读取文档...';
+  document.getElementById('refResultCard').style.display = 'none';
+
+  Word.run(function(ctx) {
+    var paragraphs = ctx.document.body.paragraphs;
+    paragraphs.load('text');
+    return ctx.sync().then(function() {
+      // 先拼成完整文本，再在每个 [数字] 前插换行，最后按行切分
+      var rawLines = [];
+      for (var i = 0; i < paragraphs.items.length; i++) {
+        rawLines.push(paragraphs.items[i].text);
+      }
+      var fullText = rawLines.join('\n');
+      // 在每个 [数字] 前插换行（只匹配纯数字序号，不影响 [J][M] 等）
+      fullText = fullText.replace(/(?=\[\d+\])/g, '\n');
+      var lines = fullText.split('\n');
+
+      // 找参考文献起始行
+      var refsText = '';
+      var refStartIdx = -1;
+      for (var j = 0; j < lines.length; j++) {
+        var trimmed = lines[j].trim();
+        if (/^参考文献\s*$/.test(trimmed) || /^References\s*$/i.test(trimmed)) {
+          refStartIdx = j;
+          break;
+        }
+      }
+      if (refStartIdx < 0) {
+        for (var k = 0; k < lines.length; k++) {
+          if (/^\s*\[1\]/.test(lines[k])) {
+            refStartIdx = k;
+            break;
+          }
+        }
+      }
+      if (refStartIdx >= 0) {
+        refsText = lines.slice(refStartIdx).join('\n');
+      }
+
+      if (!refsText || refsText.trim().length < 5) {
+        // 显示文档最后20行，帮助调试
+        var lastLines = lines.filter(function(l){ return l.trim(); }).slice(-20);
+        document.getElementById('refProgressText').textContent =
+          '未找到参考文献。末尾20行：\n' + lastLines.join('\n');
+        return;
+      }
+
+      var refCount = refsText.split('\n').filter(function(l){ return /^\s*\[\d+\]/.test(l); }).length;
+      document.getElementById('refProgressText').textContent =
+        '识别到 ' + refCount + ' 条文献，正在核查' + (verifyDoi ? '（含DOI验证，较慢）' : '') + '...';
+
+      return fetch(getApiBase() + '/api/check-refs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          refs_text: refsText,
+          body_text: '',
+          verify_dois: verifyDoi,
+        })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        document.getElementById('refProgressText').textContent = '';
+        renderRefResults(data);
+        // 同时请求统计分析
+        fetchRefStats(refsText);
+      })
+      .catch(function(err) {
+        document.getElementById('refProgressText').textContent = '核查失败: ' + err.message;
+      });
+    });
+  }).catch(function(err) {
+    document.getElementById('refProgressText').textContent = '读取文档失败: ' + err.message;
+  });
+}
+
+function renderRefResults(data) {
+  var card = document.getElementById('refResultCard');
+  var summary = document.getElementById('refSummaryBar');
+  var list = document.getElementById('refIssueList');
+
+  card.style.display = 'block';
+  summary.textContent = data.summary;
+
+  if (!data.issues || data.issues.length === 0) {
+    list.innerHTML = '<div style="color:var(--success); padding:8px">✅ 未发现问题</div>';
+    return;
+  }
+
+  var sevIcon = { error: '🔴', warning: '🟡', info: '🔵' };
+  var catLabel = { format: '格式', doi: 'DOI', metadata: '元数据', citation: '引用', duplicate: '重复' };
+  var html = '';
+  data.issues.forEach(function(iss) {
+    html += '<div class="issue-item" style="margin-bottom:8px; padding:8px; border-left:3px solid ' +
+      (iss.severity === 'error' ? '#d13438' : iss.severity === 'warning' ? '#f7630c' : '#0078d4') + '">';
+    html += '<div style="font-size:11px; font-weight:600">' +
+      (sevIcon[iss.severity] || '') + ' [' + iss.ref_index + '] ' +
+      (catLabel[iss.category] || iss.category) + '</div>';
+    html += '<div style="font-size:11px; margin-top:3px">' + iss.message + '</div>';
+    if (iss.suggestion) {
+      html += '<div style="font-size:10px; color:var(--muted); margin-top:2px">💡 ' + iss.suggestion + '</div>';
+    }
+    if (iss.raw) {
+      html += '<div style="font-size:10px; color:var(--muted); margin-top:2px; font-style:italic">' +
+        iss.raw.substring(0, 80) + (iss.raw.length > 80 ? '...' : '') + '</div>';
+    }
+    html += '</div>';
+  });
+  list.innerHTML = html;
+}
+
+// ========== 知识库管理 ==========
+
+function loadKnowledge() {
+  fetch(getApiBase() + '/api/knowledge')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var status = document.getElementById('kbStatus');
+      var list = document.getElementById('kbSources');
+      if (data.total_chunks === 0) {
+        status.textContent = '知识库为空，上传规范文档可提升编校准确率';
+        list.innerHTML = '';
+        return;
+      }
+      status.textContent = '共 ' + data.total_chunks + ' 个知识片段';
+      var html = '';
+      data.sources.forEach(function(s) {
+        html += '<div style="display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px solid var(--border)">';
+        html += '<span>📄 ' + s.source + ' (' + s.chunks + '段)</span>';
+        html += '<button class="btn btn-sm btn-danger" style="padding:1px 6px; font-size:10px" onclick="deleteKnowledge(\'' + s.source.replace(/'/g, "\\'") + '\')">删除</button>';
+        html += '</div>';
+      });
+      list.innerHTML = html;
+    })
+    .catch(function() {
+      document.getElementById('kbStatus').textContent = '知识库加载失败';
+    });
+}
+
+function uploadKnowledge() {
+  var fileInput = document.getElementById('kbFile');
+  if (!fileInput.files || !fileInput.files[0]) {
+    showStatus('请先选择文件', 'err');
+    return;
+  }
+  var file = fileInput.files[0];
+  var formData = new FormData();
+  formData.append('file', file);
+
+  showStatus('正在上传 ' + file.name + '...', 'loading');
+  fetch(getApiBase() + '/api/knowledge/upload', { method: 'POST', body: formData })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail || '上传失败'); });
+      return r.json();
+    })
+    .then(function(data) {
+      showStatus('✅ 已导入 ' + data.chunks + ' 个知识片段', 'ok');
+      fileInput.value = '';
+      loadKnowledge();
+    })
+    .catch(function(err) {
+      showStatus('❌ ' + err.message, 'err');
+    });
+}
+
+function deleteKnowledge(source) {
+  if (!confirm('确定删除「' + source + '」？')) return;
+  fetch(getApiBase() + '/api/knowledge/' + encodeURIComponent(source), { method: 'DELETE' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      showStatus('已删除 ' + data.deleted + ' 个片段', 'ok');
+      loadKnowledge();
+    })
+    .catch(function() { showStatus('删除失败', 'err'); });
+}
+
+// 页面加载时刷新知识库状态
+try { loadKnowledge(); } catch(e) {}
+
+// ========== 文献统计分析 ==========
+
+function fetchRefStats(refsText) {
+  fetch(getApiBase() + '/api/refs-stats', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refs_text: refsText, verify_dois: false })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(stats) {
+    renderRefStats(stats);
+  })
+  .catch(function(err) {
+    console.log('统计分析失败:', err);
+  });
+}
+
+function renderRefStats(stats) {
+  var card = document.getElementById('refStatsCard');
+  card.style.display = 'block';
+
+  // 基础数字
+  document.getElementById('statTotal').textContent = stats.total || 0;
+  document.getElementById('statDoi').textContent = stats.with_doi || 0;
+  document.getElementById('statChinese').textContent = stats.chinese || 0;
+
+  // 年份警告
+  var yw = document.getElementById('refYearWarning');
+  if (stats.year_warning) {
+    yw.style.display = 'block';
+    yw.textContent = '⚠️ ' + stats.year_warning;
+  } else {
+    yw.style.display = 'none';
+  }
+
+  // 年份分布（水平条形图）
+  var yearChart = document.getElementById('yearDistChart');
+  if (stats.year_dist && Object.keys(stats.year_dist).length > 0) {
+    var maxCount = Math.max.apply(null, Object.values(stats.year_dist));
+    var yearHtml = '';
+    var years = Object.keys(stats.year_dist).sort();
+    years.forEach(function(y) {
+      var c = stats.year_dist[y];
+      var pct = (c / maxCount * 100).toFixed(0);
+      yearHtml += '<div style="display:flex; align-items:center; gap:6px; margin:2px 0">';
+      yearHtml += '<span style="width:36px; text-align:right; color:var(--muted)">' + y + '</span>';
+      yearHtml += '<div style="flex:1; background:#edebe9; border-radius:2px; height:14px; overflow:hidden">';
+      yearHtml += '<div style="width:' + pct + '%; height:100%; background:var(--primary); border-radius:2px; transition:width 0.3s"></div>';
+      yearHtml += '</div>';
+      yearHtml += '<span style="width:20px; font-weight:600">' + c + '</span>';
+      yearHtml += '</div>';
+    });
+    yearChart.innerHTML = yearHtml;
+  } else {
+    yearChart.innerHTML = '<span style="color:var(--muted)">无年份数据</span>';
+  }
+
+  // 类型分布
+  var typeChart = document.getElementById('typeDistChart');
+  var typeLabels = {
+    journal: '📄 期刊', book: '📚 图书', thesis: '🎓 学位论文',
+    conference: '🎤 会议', report: '📋 报告', other: '📎 其他'
+  };
+  if (stats.type_dist && Object.keys(stats.type_dist).length > 0) {
+    var typeHtml = '<div style="display:flex; flex-wrap:wrap; gap:6px">';
+    for (var t in stats.type_dist) {
+      var label = typeLabels[t] || t;
+      typeHtml += '<span style="padding:2px 8px; background:#f3f2f1; border-radius:999px; font-size:11px">';
+      typeHtml += label + ' <b>' + stats.type_dist[t] + '</b>';
+      typeHtml += '</span>';
+    }
+    typeHtml += '</div>';
+    typeChart.innerHTML = typeHtml;
+  } else {
+    typeChart.innerHTML = '<span style="color:var(--muted)">无类型数据</span>';
+  }
+
+  // 期刊 TOP 5
+  var journalDiv = document.getElementById('journalTop5');
+  if (stats.journal_top5 && stats.journal_top5.length > 0) {
+    var jHtml = '';
+    stats.journal_top5.forEach(function(item, idx) {
+      jHtml += '<div style="display:flex; align-items:center; gap:6px; margin:3px 0; padding:3px 0; border-bottom:1px solid var(--border)">';
+      jHtml += '<span style="width:16px; font-weight:700; color:var(--primary)">' + (idx + 1) + '</span>';
+      jHtml += '<span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">' + item.journal + '</span>';
+      jHtml += '<span style="font-weight:600">' + item.count + '篇</span>';
+      jHtml += '</div>';
+    });
+    journalDiv.innerHTML = jHtml;
+  } else {
+    journalDiv.innerHTML = '<span style="color:var(--muted)">无期刊数据</span>';
+  }
+}
+
+</script>
 </body>
 </html>
